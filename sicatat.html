@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SiCatat – Warkop Tsukiji</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f3f5f1;--card:#fff;--ink:#1d2740;--mute:#667085;--line:#dde2d8;--in:#3f7a55;--out:#c2492f;--acc:#1d2740;--accfg:#fff;--warn:#fff1e8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#12161f;--card:#1a2030;--ink:#e8ecf5;--mute:#98a2b8;--line:#2b3348;--in:#6fc08a;--out:#ef8a72;--acc:#e8ecf5;--accfg:#12161f;--warn:#3a2519}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#12161f;--card:#1a2030;--ink:#e8ecf5;--mute:#98a2b8;--line:#2b3348;--in:#6fc08a;--out:#ef8a72;--acc:#e8ecf5;--accfg:#12161f;--warn:#3a2519}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Zen Kaku Gothic New",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+header h1{font-size:22px;margin:0;font-weight:700}
+header small{color:var(--mute)}
+.sp{flex:1}
+nav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:16px}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;cursor:pointer;white-space:nowrap;color:var(--mute)}
+nav button.on{border-color:var(--acc);color:var(--ink);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{font-size:17px;margin:0 0 12px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.stat b{display:block;font-size:24px}
+.in{color:var(--in)}.out{color:var(--out)}
+label{display:block;font-size:13px;color:var(--mute)}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);margin-top:2px}
+.btn{background:var(--acc);color:var(--accfg);border:0;border-radius:6px;padding:9px 16px;cursor:pointer;font-weight:500}
+.btn.sec{background:none;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:520px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);font-size:14px}
+th{color:var(--mute);font-weight:500}
+.alert{background:var(--warn);border-left:4px solid var(--out);padding:8px 12px;border-radius:6px;margin-bottom:8px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:140px;overflow-x:auto;padding-top:8px}
+.bg{display:flex;align-items:flex-end;gap:2px;height:100%;flex:0 0 36px;position:relative}
+.bg i{flex:1;display:block;border-radius:3px 3px 0 0;min-height:2px}
+.bg span{position:absolute;bottom:-18px;left:0;font-size:10px;color:var(--mute)}
+.login{max-width:340px;margin:12vh auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row>*{flex:1;min-width:130px}
+.msg{color:var(--out);font-size:13px;min-height:18px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const fmt=n=>"Rp "+new Intl.NumberFormat("id-ID").format(n||0);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const sha=async t=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)))].map(b=>b.toString(16).padStart(2,"0")).join("");
+const KEY="sicatat-v1";
+let db,user=null,tab="dash",editId=null,flt={from:"",to:"",cat:""},rep={p:"bulanan",d:today()},msg="";
+function seed(){const d=today();return{
+ items:[{id:1,nama:"Kopi hitam (bubuk, kg)",kat:"Bahan baku",harga:120000,stok:6,min:3},{id:2,nama:"Gula pasir (kg)",kat:"Bahan baku",harga:16000,stok:2,min:4},{id:3,nama:"Mi instan",kat:"Dagangan",harga:3500,stok:40,min:15},{id:4,nama:"Kopi sachet",kat:"Dagangan",harga:2500,stok:12,min:20}],
+ trx:[{id:1,tgl:d,jenis:"masuk",kat:"Penjualan",nom:350000,ket:"Penjualan harian",item:0,qty:0},{id:2,tgl:d,jenis:"keluar",kat:"Bahan baku",nom:120000,ket:"Beli kopi bubuk",item:0,qty:0},{id:3,tgl:d,jenis:"keluar",kat:"Operasional",nom:50000,ket:"Listrik dan gas",item:0,qty:0}],
+ nid:{t:4,i:5}}}
+function load(){try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!db)db=seed()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+const USERS={admin:{h:null,p:"admin123",role:"Admin"},staf:{h:null,p:"staf123",role:"Staf"}};
+async function login(){const u=document.getElementById("u").value.trim(),p=document.getElementById("p").value;const a=USERS[u];
+ if(a&&await sha(p)===await sha(a.p)){user={name:u,role:a.role};msg="";tab="dash";render()}else{msg="Username atau kata sandi salah.";render()}}
+const isAdmin=()=>user&&user.role==="Admin";
+function low(){return db.items.filter(i=>i.stok<i.min)}
+function tabs(){const t=[["dash","Dashboard"],["trx","Input transaksi"],["stok","Stok barang"]];if(isAdmin())t.splice(2,0,["lap","Laporan laba-rugi"]);return t}
+function render(){const el=document.getElementById("app");
+ if(!user){el.innerHTML=`<div class="card login"><h1 style="margin:0 0 4px">SiCatat</h1><p style="color:var(--mute);margin:0 0 16px">Pencatatan keuangan dan stok Warkop Tsukiji</p>
+ <label>Username<input id="u" autocomplete="username"></label><br><label>Kata sandi<input id="p" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></label>
+ <p class="msg">${msg}</p><button class="btn" onclick="login()">Masuk</button>
+ <p style="font-size:12px;color:var(--mute)">Akun uji: admin / admin123 (Admin), staf / staf123 (Staf)</p></div>`;return}
+ const L=low();
+ el.innerHTML=`<header><h1>SiCatat</h1><small>Warkop Tsukiji</small><span class="sp"></span><small>${esc(user.name)} (${user.role})</small>
+ <button class="btn sec sm" onclick="user=null;render()">Keluar</button></header>
+ <nav>${tabs().map(([k,n])=>`<button class="${tab===k?"on":""}" onclick="tab='${k}';editId=null;render()">${n}${k==="stok"&&L.length?` (${L.length})`:""}</button>`).join("")}</nav>${view()}`}
+function sums(list){const i=list.filter(t=>t.jenis==="masuk").reduce((a,t)=>a+t.nom,0),o=list.filter(t=>t.jenis==="keluar").reduce((a,t)=>a+t.nom,0);return{i,o,n:i-o}}
+function view(){return{dash,trx,lap,stok}[tab]()}
+function dash(){const m=today().slice(0,7),s=sums(db.trx.filter(t=>t.tgl.startsWith(m))),L=low();
+ return `<div class="grid">${isAdmin()?`<div class="card stat"><span>Pemasukan bulan ini</span><b class="in">${fmt(s.i)}</b></div><div class="card stat"><span>Pengeluaran bulan ini</span><b class="out">${fmt(s.o)}</b></div><div class="card stat"><span>Laba bersih</span><b>${fmt(s.n)}</b></div>`:""}<div class="card stat"><span>Barang stok menipis</span><b>${L.length}</b></div></div>
+ <div class="card"><h2>Notifikasi stok menipis</h2>${L.length?L.map(i=>`<div class="alert"><b>${esc(i.nama)}</b>: sisa ${i.stok}, batas minimum ${i.min}. Segera belanja ulang.</div>`).join(""):"<p>Semua stok masih aman.</p>"}</div>`}
+function trx(){const e=db.trx.find(t=>t.id===editId)||{tgl:today(),jenis:"masuk",kat:"Penjualan",nom:"",ket:"",item:0,qty:""};
+ let list=db.trx.filter(t=>(!flt.from||t.tgl>=flt.from)&&(!flt.to||t.tgl<=flt.to)&&(!flt.cat||t.kat===flt.cat)).sort((a,b)=>b.tgl.localeCompare(a.tgl)||b.id-a.id);
+ const cats=[...new Set(db.trx.map(t=>t.kat))];
+ return `<div class="card"><h2>${editId?"Ubah transaksi":"Catat transaksi baru"}</h2><div class="row">
+ <label>Tanggal kas diterima/keluar<input type="date" id="f_tgl" value="${e.tgl}"></label>
+ <label>Jenis<select id="f_jenis"><option value="masuk" ${e.jenis==="masuk"?"selected":""}>Pemasukan</option><option value="keluar" ${e.jenis==="keluar"?"selected":""}>Pengeluaran</option></select></label>
+ <label>Kategori<input id="f_kat" value="${esc(e.kat)}" list="cl"></label><datalist id="cl">${["Penjualan","Bahan baku","Operasional","Gaji"].map(c=>`<option value="${c}">`).join("")}</datalist>
+ <label>Nominal (Rp)<input type="number" min="1" id="f_nom" value="${e.nom}"></label></div>
+ <div class="row" style="margin-top:8px"><label>Keterangan<input id="f_ket" value="${esc(e.ket)}"></label>
+ <label>Barang terjual (opsional)<select id="f_item"><option value="0">Tidak terkait stok</option>${db.items.map(i=>`<option value="${i.id}" ${e.item===i.id?"selected":""}>${esc(i.nama)}</option>`).join("")}</select></label>
+ <label>Jumlah terjual<input type="number" min="0" id="f_qty" value="${e.qty}"></label></div>
+ <p class="msg">${msg}</p><button class="btn" onclick="saveTrx()">Simpan transaksi</button> ${editId?`<button class="btn sec" onclick="editId=null;render()">Batal</button>`:""}</div>
+ <div class="card"><h2>Riwayat transaksi</h2><div class="row" style="margin-bottom:8px"><label>Dari<input type="date" value="${flt.from}" onchange="flt.from=this.value;render()"></label><label>Sampai<input type="date" value="${flt.to}" onchange="flt.to=this.value;render()"></label>
+ <label>Kategori<select onchange="flt.cat=this.value;render()"><option value="">Semua</option>${cats.map(c=>`<option ${flt.cat===c?"selected":""}>${esc(c)}</option>`).join("")}</select></label></div>
+ <div class="tw"><table><tr><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th>Nominal</th><th></th></tr>${list.map(t=>`<tr><td>${t.tgl}</td><td>${esc(t.kat)}</td><td>${esc(t.ket)}</td><td class="${t.jenis==="masuk"?"in":"out"}">${t.jenis==="masuk"?"+":"−"}${fmt(t.nom)}</td><td><button class="btn sec sm" onclick="editId=${t.id};render()">Ubah</button> <button class="btn sec sm" onclick="delTrx(${t.id})">Hapus</button></td></tr>`).join("")||`<tr><td colspan="5">Belum ada transaksi pada filter ini.</td></tr>`}</table></div></div>`}
+function saveTrx(){const g=i=>document.getElementById(i).value;const nom=+g("f_nom");
+ if(!g("f_tgl")||!g("f_kat").trim()||!(nom>0)){msg="Tanggal, kategori, dan nominal wajib diisi dengan benar.";return render()}
+ const item=+g("f_item"),qty=+g("f_qty")||0,jenis=g("f_jenis");const d={tgl:g("f_tgl"),jenis,kat:g("f_kat").trim(),nom,ket:g("f_ket").trim(),item,qty};
+ const adj=(t,sign)=>{if(t.item&&t.jenis==="masuk"){const b=db.items.find(i=>i.id===t.item);if(b)b.stok-=sign*t.qty}};
+ if(item&&jenis==="masuk"){const b=db.items.find(i=>i.id===item);const cur=editId?db.trx.find(t=>t.id===editId):null;const avail=b.stok+(cur&&cur.item===item?cur.qty:0);if(qty>avail){msg=`Stok ${b.nama} hanya ${avail}.`;return render()}}
+ if(editId){const t=db.trx.find(x=>x.id===editId);adj(t,-1);Object.assign(t,d);adj(t,1)}else{d.id=db.nid.t++;db.trx.push(d);adj(d,1)}
+ msg="";editId=null;save();render()}
+function delTrx(id){if(!confirm("Hapus transaksi ini? Stok terkait akan dikembalikan."))return;const t=db.trx.find(x=>x.id===id);
+ if(t.item&&t.jenis==="masuk"){const b=db.items.find(i=>i.id===t.item);if(b)b.stok+=t.qty}db.trx=db.trx.filter(x=>x.id!==id);save();render()}
+function range(){const d=new Date(rep.d+"T00:00:00");let a=new Date(d),b=new Date(d);
+ if(rep.p==="mingguan"){const w=(d.getDay()+6)%7;a.setDate(d.getDate()-w);b=new Date(a);b.setDate(a.getDate()+6)}
+ if(rep.p==="bulanan"){a=new Date(d.getFullYear(),d.getMonth(),1);b=new Date(d.getFullYear(),d.getMonth()+1,0)}
+ const f=x=>{const z=new Date(x.getTime()-x.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};return[f(a),f(b)]}
+function lap(){const[a,b]=range(),list=db.trx.filter(t=>t.tgl>=a&&t.tgl<=b),s=sums(list);
+ const days={};list.forEach(t=>{(days[t.tgl]=days[t.tgl]||{i:0,o:0})[t.jenis==="masuk"?"i":"o"]+=t.nom});const ks=Object.keys(days).sort(),mx=Math.max(1,...ks.map(k=>Math.max(days[k].i,days[k].o)));
+ const byCat={};list.forEach(t=>{const k=t.jenis+"|"+t.kat;byCat[k]=(byCat[k]||0)+t.nom});
+ return `<div class="card"><h2>Laporan laba-rugi (metode cash basis)</h2><div class="row"><label>Periode<select onchange="rep.p=this.value;render()">${["harian","mingguan","bulanan"].map(p=>`<option ${rep.p===p?"selected":""}>${p}</option>`).join("")}</select></label>
+ <label>Tanggal acuan<input type="date" value="${rep.d}" onchange="rep.d=this.value||today();render()"></label></div><p style="color:var(--mute)">${a} s.d. ${b}</p>
+ <div class="grid"><div class="stat"><span>Total pemasukan</span><b class="in">${fmt(s.i)}</b></div><div class="stat"><span>Total pengeluaran</span><b class="out">${fmt(s.o)}</b></div><div class="stat"><span>${s.n>=0?"Laba":"Rugi"}</span><b>${fmt(Math.abs(s.n))}</b></div></div></div>
+ <div class="card"><h2>Grafik per hari</h2>${ks.length?`<div class="bars" style="margin-bottom:22px">${ks.map(k=>`<div class="bg"><i style="height:${days[k].i/mx*100}%;background:var(--in)" title="Masuk ${fmt(days[k].i)}"></i><i style="height:${days[k].o/mx*100}%;background:var(--out)" title="Keluar ${fmt(days[k].o)}"></i><span>${k.slice(8)}</span></div>`).join("")}</div><small style="color:var(--mute)">Hijau: pemasukan. Merah: pengeluaran.</small>`:"<p>Belum ada transaksi pada periode ini.</p>"}</div>
+ <div class="card"><h2>Rincian per kategori</h2><div class="tw"><table><tr><th>Jenis</th><th>Kategori</th><th>Total</th></tr>${Object.entries(byCat).map(([k,v])=>{const[j,c]=k.split("|");return`<tr><td>${j==="masuk"?"Pemasukan":"Pengeluaran"}</td><td>${esc(c)}</td><td>${fmt(v)}</td></tr>`}).join("")||`<tr><td colspan="3">Tidak ada data.</td></tr>`}</table></div>
+ <p><button class="btn sec" onclick="window.print()">Cetak atau simpan PDF</button></p></div>`}
+function stok(){const e=db.items.find(i=>i.id===editId)||{nama:"",kat:"Bahan baku",harga:"",stok:"",min:""};
+ return `<div class="card"><h2>${editId?"Ubah barang":"Tambah barang"}</h2><div class="row"><label>Nama<input id="s_nama" value="${esc(e.nama)}"></label><label>Kategori<input id="s_kat" value="${esc(e.kat)}"></label><label>Harga (Rp)<input type="number" min="0" id="s_harga" value="${e.harga}"></label>
+ <label>Jumlah stok<input type="number" min="0" id="s_stok" value="${e.stok}"></label><label>Batas minimum<input type="number" min="0" id="s_min" value="${e.min}"></label></div><p class="msg">${msg}</p>
+ <button class="btn" onclick="saveItem()">Simpan barang</button> ${editId?`<button class="btn sec" onclick="editId=null;render()">Batal</button>`:""}</div>
+ <div class="card"><h2>Daftar barang</h2><div class="tw"><table><tr><th>Nama</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Minimum</th><th></th></tr>${db.items.map(i=>`<tr><td>${esc(i.nama)}</td><td>${esc(i.kat)}</td><td>${fmt(i.harga)}</td><td class="${i.stok<i.min?"out":""}"><b>${i.stok}</b>${i.stok<i.min?" (menipis)":""}</td><td>${i.min}</td><td><button class="btn sec sm" onclick="editId=${i.id};render()">Ubah</button> <button class="btn sec sm" onclick="delItem(${i.id})">Hapus</button></td></tr>`).join("")||`<tr><td colspan="6">Belum ada barang. Tambahkan barang pertama di atas.</td></tr>`}</table></div></div>`}
+function saveItem(){const g=i=>document.getElementById(i).value;
+ if(!g("s_nama").trim()){msg="Nama barang wajib diisi.";return render()}
+ const d={nama:g("s_nama").trim(),kat:g("s_kat").trim(),harga:+g("s_harga")||0,stok:+g("s_stok")||0,min:+g("s_min")||0};
+ if(editId)Object.assign(db.items.find(i=>i.id===editId),d);else{d.id=db.nid.i++;db.items.push(d)}msg="";editId=null;save();render()}
+function delItem(id){if(!confirm("Hapus barang ini?"))return;db.items=db.items.filter(i=>i.id!==id);save();render()}
+load();render();
+</script>
+</body>
+</html>
